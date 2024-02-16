@@ -24,6 +24,7 @@
 #include <AP_HAL/AP_HAL_Boards.h>
 #include "AP_Periph.h"
 #include <stdio.h>
+#include "serial_to_can.h"
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 #include <AP_HAL_ChibiOS/hwdef/common/stm32_util.h>
@@ -41,6 +42,8 @@ AP_Periph_FW periph;
 
 void setup();
 void loop();
+void added_setup();
+void added_update();
 
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
@@ -58,6 +61,21 @@ void loop(void)
 {
     periph.update();
 }
+
+
+
+void added_setup(void) {
+    serial2can_init();
+}
+
+
+void added_update(void){
+    serial2can_update();
+}
+
+
+
+
 
 static uint32_t start_ms;
 
@@ -117,7 +135,7 @@ void AP_Periph_FW::init()
 #endif
 
     stm32_watchdog_pat();
-
+    
 #ifdef HAL_BOARD_AP_PERIPH_ZUBAXGNSS
     // setup remapping register for ZubaxGNSS
     uint32_t mapr = AFIO->MAPR;
@@ -285,13 +303,15 @@ void AP_Periph_FW::init()
     notify.init();
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_RELAY
+    #ifdef HAL_PERIPH_ENABLE_RELAY
     relay.init();
 #endif
 
 #if AP_SCRIPTING_ENABLED
     scripting.init();
 #endif
+
+    added_setup();
     start_ms = AP_HAL::millis();
 }
 
@@ -402,6 +422,7 @@ void AP_Periph_FW::update()
             palToggleLine(HAL_GPIO_PIN_LED);
         }
 #endif
+
 #if 0
 #ifdef HAL_PERIPH_ENABLE_GPS
         hal.serial(0)->printf("GPS status: %u\n", (unsigned)gps.status());
@@ -507,6 +528,8 @@ void AP_Periph_FW::update()
     logger.periodic_tasks();
 #endif
 
+    added_update();
+
     can_update();
 
 #ifdef HAL_PERIPH_ENABLE_NETWORKING
@@ -519,6 +542,7 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_ADSB
     adsb_update();
 #endif
+    
 }
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT

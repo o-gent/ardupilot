@@ -173,6 +173,7 @@ public:
     void can_buzzer_update(void);
     void can_safety_button_update(void);
     void can_safety_LED_update(void);
+    void serial_to_can_update(void);
 
     void load_parameters();
     void prepare_reboot();

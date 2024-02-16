@@ -1742,6 +1742,8 @@ void AP_Periph_FW::apd_esc_telem_update()
 void AP_Periph_FW::can_update()
 {
     const uint32_t now = AP_HAL::millis();
+
+    serial_to_can_update();
     const uint32_t led_pattern = 0xAAAA;
     const uint32_t led_change_period = 50;
     static uint8_t led_idx = 0;
