@@ -105,6 +105,7 @@ public:
     int8_t get_abort_throttle_enable(void) const { return abort_throttle_enable; }
     int8_t get_flap_percent(void) const { return flap_percent; }
     int8_t get_throttle_slewrate(void) const { return throttle_slewrate; }
+    int8_t get_is_simple_landing(void) const { return is_simple_landing; }
     bool is_commanded_go_around(void) const { return flags.commanded_go_around; }
     bool is_complete(void) const;
     void set_initial_slope(void) { initial_slope = slope; }
@@ -169,6 +170,7 @@ private:
     AP_Int8 type;
     AP_Int8 flare_effectivness_pct;
     AP_Float wind_comp;
+    AP_Int8 is_simple_landing;
 
     // Land Type STANDARD GLIDE SLOPE
 

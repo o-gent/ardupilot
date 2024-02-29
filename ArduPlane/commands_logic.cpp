@@ -254,12 +254,25 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
             return landing.verify_abort_landing(prev_WP_loc, next_WP_loc, current_loc, auto_state.takeoff_altitude_rel_cm, throttle_suppressed);
 
         } else {
-            // use rangefinder to correct if possible
-            float height = height_above_target() - rangefinder_correction();
-            // for flare calculations we don't want to use the terrain
-            // correction as otherwise we will flare early on rising
-            // ground
-            height -= auto_state.terrain_correction;
+
+            float height;
+
+            if (landing.get_is_simple_landing() == 1) {
+                if (g.rangefinder_landing && rangefinder_state.in_range){
+                    height = rangefinder_state.height_estimate;
+                }
+                else {
+                    height = height_above_target();
+                }
+            }
+            else {
+                // use rangefinder to correct if possible
+                height = height_above_target() - rangefinder_correction();
+                // for flare calculations we don't want to use the terrain
+                // correction as otherwise we will flare early on rising
+                // ground
+                height -= auto_state.terrain_correction;
+            }
             return landing.verify_land(prev_WP_loc, next_WP_loc, current_loc,
                                        height, auto_state.sink_rate, auto_state.wp_proportion, auto_state.last_flying_ms, arming.is_armed(), is_flying(),
                                        g.rangefinder_landing && rangefinder_state.in_range);

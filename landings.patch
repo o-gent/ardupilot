@@ -1,0 +1,94 @@
+diff --git a/ArduPlane/altitude.cpp b/ArduPlane/altitude.cpp
+index 6387edef12..9a40b11480 100644
+--- a/ArduPlane/altitude.cpp
++++ b/ArduPlane/altitude.cpp
+@@ -635,9 +635,9 @@ void Plane::rangefinder_height_update(void)
+         }
+         // correct the range for attitude (multiply by DCM.c.z, which
+         // is cos(roll)*cos(pitch))
+-        rangefinder_state.height_estimate = distance * ahrs.get_rotation_body_to_ned().c.z;
++        rangefinder_state.height_estimate = distance; //* ahrs.get_rotation_body_to_ned().c.z;
+ 
+-        rangefinder_terrain_correction(rangefinder_state.height_estimate);
++        //rangefinder_terrain_correction(rangefinder_state.height_estimate);
+ 
+         // we consider ourselves to be fully in range when we have 10
+         // good samples (0.2s) that are different by 5% of the maximum
+diff --git a/ArduPlane/commands_logic.cpp b/ArduPlane/commands_logic.cpp
+index 299f5e004c..2a13fa6eae 100644
+--- a/ArduPlane/commands_logic.cpp
++++ b/ArduPlane/commands_logic.cpp
+@@ -251,12 +251,25 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
+             return landing.verify_abort_landing(prev_WP_loc, next_WP_loc, current_loc, auto_state.takeoff_altitude_rel_cm, throttle_suppressed);
+ 
+         } else {
+-            // use rangefinder to correct if possible
+-            float height = height_above_target() - rangefinder_correction();
+-            // for flare calculations we don't want to use the terrain
+-            // correction as otherwise we will flare early on rising
+-            // ground
+-            height -= auto_state.terrain_correction;
++
++            float height;
++
++            if (landing.get_is_simple_landing() == 1) {
++                if (g.rangefinder_landing && rangefinder_state.in_range){
++                    height = rangefinder_state.height_estimate;
++                }
++                else {
++                    height = height_above_target();
++                }
++            }
++            else {
++                // use rangefinder to correct if possible
++                height = height_above_target() - rangefinder_correction();
++                // for flare calculations we don't want to use the terrain
++                // correction as otherwise we will flare early on rising
++                // ground
++                height -= auto_state.terrain_correction;
++            }
+             return landing.verify_land(prev_WP_loc, next_WP_loc, current_loc,
+                                        height, auto_state.sink_rate, auto_state.wp_proportion, auto_state.last_flying_ms, arming.is_armed(), is_flying(),
+                                        g.rangefinder_landing && rangefinder_state.in_range);
+diff --git a/libraries/AP_Landing/AP_Landing.cpp b/libraries/AP_Landing/AP_Landing.cpp
+index e3947d40f6..e875bb0b07 100644
+--- a/libraries/AP_Landing/AP_Landing.cpp
++++ b/libraries/AP_Landing/AP_Landing.cpp
+@@ -163,6 +163,15 @@ const AP_Param::GroupInfo AP_Landing::var_info[] = {
+     // @User: Advanced
+     AP_GROUPINFO("WIND_COMP", 18, AP_Landing, wind_comp, 50),
+ 
++    // // @Param: SMPL_LAND
++    // // @DisplayName: Headwind Compensation when Landing 2
++    // // @Description: This param controls how much headwind compensation is used when landing.  Headwind speed component multiplied by this parameter is added to TECS_LAND_ARSPD command.  Set to Zero to disable.  Note:  The target landing airspeed command is still limited to ARSPD_FBW_MAX.
++    // // @Range: 0 100
++    // // @Units: %
++    // // @Increment: 1
++    // // @User: Advanced
++    AP_GROUPINFO("SMPL_LAND", 19, AP_Landing, is_simple_landing, 0),
++
+     // @Param: TYPE
+     // @DisplayName: Auto-landing type
+     // @Description: Specifies the auto-landing type to use
+diff --git a/libraries/AP_Landing/AP_Landing.h b/libraries/AP_Landing/AP_Landing.h
+index 554a883a27..5682aa7efb 100644
+--- a/libraries/AP_Landing/AP_Landing.h
++++ b/libraries/AP_Landing/AP_Landing.h
+@@ -105,6 +105,7 @@ public:
+     int8_t get_abort_throttle_enable(void) const { return abort_throttle_enable; }
+     int8_t get_flap_percent(void) const { return flap_percent; }
+     int8_t get_throttle_slewrate(void) const { return throttle_slewrate; }
++    int8_t get_is_simple_landing(void) const { return is_simple_landing; }
+     bool is_commanded_go_around(void) const { return flags.commanded_go_around; }
+     bool is_complete(void) const;
+     void set_initial_slope(void) { initial_slope = slope; }
+@@ -169,6 +170,7 @@ private:
+     AP_Int8 type;
+     AP_Int8 flare_effectivness_pct;
+     AP_Float wind_comp;
++    AP_Int8 is_simple_landing;
+ 
+     // Land Type STANDARD GLIDE SLOPE
+
+-
++
