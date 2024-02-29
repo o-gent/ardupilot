@@ -72,7 +72,7 @@ void AP_MotorsSingle::output_to_motors()
             // sends minimum values out to the motors
             rc_write_angle(AP_MOTORS_MOT_1, _roll_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             rc_write_angle(AP_MOTORS_MOT_2, _pitch_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
-            rc_write_angle(AP_MOTORS_MOT_3, -_roll_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
+            rc_write_angle(AP_MOTORS_MOT_3, -_yaw_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             rc_write_angle(AP_MOTORS_MOT_4, -_pitch_radio_passthrough * AP_MOTORS_SINGLE_SERVO_INPUT_RANGE);
             rc_write(AP_MOTORS_MOT_5, output_to_pwm(0));
             rc_write(AP_MOTORS_MOT_6, output_to_pwm(0));
@@ -174,11 +174,11 @@ void AP_MotorsSingle::output_armed_stabilizing()
 
     // combine roll, pitch and yaw on each actuator
     // front servo
-    actuator[0] = rp_scale * roll_thrust - yaw_thrust;
+    actuator[0] = rp_scale * roll_thrust; // - yaw_thrust;
     // right servo
-    actuator[1] = rp_scale * pitch_thrust - yaw_thrust;
+    actuator[1] = rp_scale * pitch_thrust; // - yaw_thrust;
     // rear servo
-    actuator[2] = -rp_scale * roll_thrust - yaw_thrust;
+    actuator[2] = -rp_scale * yaw_thrust; // - yaw_thrust;
     // left servo
     actuator[3] = -rp_scale * pitch_thrust - yaw_thrust;
 
