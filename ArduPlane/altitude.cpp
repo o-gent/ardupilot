@@ -224,7 +224,7 @@ void Plane::set_target_altitude_location(const Location &loc)
       terrain altitude
      */
     float height;
-    if (loc.terrain_alt && terrain.height_above_terrain(height, true)) {
+    if (loc.terrain_alt && terrain.height_above_terrain(height, rangefinder, true)) {
         target_altitude.terrain_following = true;
         target_altitude.terrain_alt_cm = loc.alt;
         if (!loc.relative_alt) {
@@ -246,8 +246,15 @@ int32_t Plane::relative_target_altitude_cm(void)
 #if AP_TERRAIN_AVAILABLE
     float relative_home_height;
     if (target_altitude.terrain_following && 
-        terrain.height_relative_home_equivalent(target_altitude.terrain_alt_cm*0.01f,
-                                                relative_home_height, true)) {
+        // terrain.height_relative_home_equivalent(target_altitude.terrain_alt_cm*0.01f, relative_home_height, true)
+        terrain.height_above_terrain(relative_home_height, rangefinder, true)
+        ) 
+    
+    {
+        float rng_target = target_altitude.terrain_alt_cm*0.01f + target_altitude.terrain_alt_cm*0.01f - relative_home_height;
+
+        relative_home_height = rng_target;
+
         // add lookahead adjustment the target altitude
         target_altitude.lookahead = lookahead_adjustment();
         relative_home_height += target_altitude.lookahead;
@@ -257,6 +264,11 @@ int32_t Plane::relative_target_altitude_cm(void)
 
         // we are following terrain, and have terrain data for the
         // current location. Use it.
+
+        if (relative_home_height < rng_target) {
+            relative_home_height = rng_target;
+        }
+        gcs().send_text(MAV_SEVERITY_INFO, "relative_target_altitude_cm %.2fm", (double)relative_home_height);
         return relative_home_height*100;
     }
 #endif
@@ -329,10 +341,16 @@ int32_t Plane::calc_altitude_error_cm(void)
 #if AP_TERRAIN_AVAILABLE
     float terrain_height;
     if (target_altitude.terrain_following && 
-        terrain.height_above_terrain(terrain_height, true)) {
-        return target_altitude.lookahead*100 + target_altitude.terrain_alt_cm - (terrain_height*100);
+        terrain.height_above_terrain(terrain_height, rangefinder, true)) {
+        
+        bool status = (rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good);
+        gcs().send_text(MAV_SEVERITY_INFO, "status %.2fm", (double)status);
+        // return target_altitude.lookahead*100 + target_altitude.terrain_alt_cm - (terrain_height*100);
+        return target_altitude.terrain_alt_cm - (terrain_height*100);
     }
+    
 #endif
+    
     return target_altitude.amsl_cm - adjusted_altitude_cm();
 }
 
@@ -419,7 +437,7 @@ void Plane::set_offset_altitude_location(const Location &start_loc, const Locati
     float height;
     if (destination_loc.terrain_alt && 
         target_altitude.terrain_following &&
-        terrain.height_above_terrain(height, true)) {
+        terrain.height_above_terrain(height, rangefinder, true)) {
         target_altitude.offset_cm = target_altitude.terrain_alt_cm - (height * 100);
     }
 #endif
@@ -455,7 +473,7 @@ bool Plane::above_location_current(const Location &loc)
 #if AP_TERRAIN_AVAILABLE
     float terrain_alt;
     if (loc.terrain_alt && 
-        terrain.height_above_terrain(terrain_alt, true)) {
+        terrain.height_above_terrain(terrain_alt, rangefinder, true)) {
         float loc_alt = loc.alt*0.01f;
         if (!loc.relative_alt) {
             loc_alt -= home.alt*0.01f;
@@ -541,7 +559,8 @@ float Plane::height_above_target(void)
     // also record the terrain altitude if possible
     float terrain_altitude;
     if (next_WP_loc.terrain_alt && 
-        terrain.height_above_terrain(terrain_altitude, true)) {
+        terrain.height_above_terrain(terrain_altitude, rangefinder, true)) {
+        gcs().send_text(MAV_SEVERITY_INFO, "height_above_target %.2fm", (double)terrain_altitude);
         return terrain_altitude - target_alt;
     }
 #endif

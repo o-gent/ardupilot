@@ -27,6 +27,8 @@
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #include <AP_Filesystem/AP_Filesystem.h>
 #include <AP_Rally/AP_Rally.h>
+#include <AP_RangeFinder/AP_RangeFinder.h>
+#include <AP_Vehicle/AP_Vehicle.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -222,6 +224,54 @@ bool AP_Terrain::height_terrain_difference_home(float &terrain_difference, bool 
 
     return true;
 }
+
+/* 
+   return current height above terrain at current AHRS
+   position. 
+   
+   If extrapolate is true then extrapolate from most recently
+   available terrain data is terrain data is not available for the
+   current location.
+   
+   Return true if height is available, otherwise false.
+*/
+bool AP_Terrain::height_above_terrain(float &terrain_altitude, RangeFinder &rangefinder, bool extrapolate)
+{
+    const AP_AHRS &ahrs = AP::ahrs();
+
+    float distance = rangefinder.distance_orient(ROTATION_PITCH_270);
+
+    if (rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good) {
+        terrain_altitude = distance;
+        return true;   
+    }
+
+    Location current_loc;
+    if (!ahrs.get_location(current_loc)) {
+        // we don't know where we are
+        return false;
+    }
+
+    float theight_loc;
+    if (!height_amsl(current_loc, theight_loc)) {
+        if (!extrapolate) {
+            return false;
+        }
+        // we don't have data at the current location, but the caller
+        // has asked for extrapolation, so use the last available
+        // terrain height. This can be used to fill in while new data
+        // is fetched. It should be very rarely used
+        theight_loc = last_current_loc_height;
+    }
+
+    int32_t height_amsl_cm = 0;
+    UNUSED_RESULT(current_loc.get_alt_cm(Location::AltFrame::ABSOLUTE, height_amsl_cm));
+
+    terrain_altitude = height_amsl_cm*0.01 - theight_loc;
+    return true;
+}
+
+
 
 /* 
    return current height above terrain at current AHRS

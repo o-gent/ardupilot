@@ -25,7 +25,6 @@
 #define SCHED_TASK(func, rate_hz, max_time_micros, priority) SCHED_TASK_CLASS(Plane, &plane, func, rate_hz, max_time_micros, priority)
 #define FAST_TASK(func) FAST_TASK_CLASS(Plane, &plane, func)
 
-
 /*
   scheduler table - all regular tasks should be listed here.
 
@@ -538,6 +537,9 @@ void Plane::set_flight_stage(AP_FixedWing::FlightStage fs)
     Log_Write_Status();
 #endif
 }
+float last_alt = 0;
+float last_error = 0;
+float int_error = 0;
 
 void Plane::update_alt()
 {
@@ -584,7 +586,29 @@ void Plane::update_alt()
             distance_beyond_land_wp = current_loc.get_distance(next_WP_loc);
         }
 
-        tecs_target_alt_cm = relative_target_altitude_cm();
+        float error = ((next_WP_loc.alt-home.alt)/100 - rangefinder.distance_orient(ROTATION_PITCH_270));
+        tecs_target_alt_cm = relative_altitude*100 + 8*error + 2*(error-last_error)+ 4*int_error;
+        last_alt = tecs_target_alt_cm;
+        int_error += error;
+        if (abs(int_error) > 150) {
+            if(int_error > 1) {
+                int_error = 150;
+                if(error < 0) {
+                    int_error = 0;
+                }
+            }
+            else {
+                int_error = -150;
+                if(error > 0) {
+                    int_error = 0;
+                }
+            }
+        }
+        last_error = error;
+        
+        //100*(alt*0.1f + (100 - rangefinder.distance_orient(ROTATION_PITCH_270))); //relative_target_altitude_cm(); //
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Landing aborted, climbing to %dm", int(tecs_target_alt_cm/100));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Landing aborted, climbing to %dm", int(error));
 
         if (control_mode == &mode_rtl && !rtl.done_climb && (g2.rtl_climb_min > 0 || (plane.flight_option_enabled(FlightOptions::CLIMB_BEFORE_TURN)))) {
             // ensure we do the initial climb in RTL. We add an extra

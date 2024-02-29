@@ -28,6 +28,7 @@
 #include <AP_Param/AP_Param.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Logger/AP_Logger_config.h>
+#include <AP_RangeFinder/AP_RangeFinder.h>
 
 #define TERRAIN_DEBUG 0
 
@@ -165,6 +166,7 @@ public:
 
        Return true if height is available, otherwise false.
     */
+    bool height_above_terrain(float &terrain_altitude, RangeFinder &rangefinder, bool extrapolate = false);
     bool height_above_terrain(float &terrain_altitude, bool extrapolate = false);
 
     /*
