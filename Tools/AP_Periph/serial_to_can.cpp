@@ -53,9 +53,78 @@ void serial2can_update()
             {
                 mavlink_airspeed_t airspeed;
                 mavlink_msg_airspeed_decode(&msg, &airspeed);
-                arspd_pkt.flags = 0;
+                arspd_pkt.flags = airspeed.flags;
                 arspd_pkt.differential_pressure = airspeed.raw_press;
+                arspd_pkt.differential_pressure_sensor_temperature = airspeed.temperature;
                 airspeed_packet_update = true;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_HYGROMETER_SENSOR:
+            {
+                mavlink_hygrometer_sensor_t hygrometer;
+                mavlink_msg_hygrometer_sensor_decode(&msg, &hygrometer);
+                temp_pkt.temperature = hygrometer.temperature;
+                temp_pkt.device_id = hygrometer.id;
+                temperature_packet_update = true;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_BATTERY_STATUS:
+            {
+                mavlink_battery_status_t battery;
+                mavlink_msg_battery_status_decode(&msg, &battery);
+                batt_pkt.average_power_10sec = 0;
+                batt_pkt.battery_id = battery.id;
+                batt_pkt.current = battery.current_battery;
+                batt_pkt.full_charge_capacity_wh = -1;
+                batt_pkt.hours_to_full_charge = -1;
+                batt_pkt.model_instance_id = 0;
+                //batt_pkt.model_name;
+                batt_pkt.remaining_capacity_wh = -1;
+                batt_pkt.state_of_charge_pct = battery.battery_remaining;
+                batt_pkt.state_of_charge_pct_stdev = -1;
+                batt_pkt.state_of_health_pct = -1;
+                // batt_pkt.status_flags
+                batt_pkt.temperature = battery.temperature;
+                batt_pkt.voltage = battery.voltages[0];
+                battery_packet_update = true;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_DISTANCE_SENSOR:
+            {
+                mavlink_distance_sensor_t distance;
+                mavlink_msg_distance_sensor_decode(&msg, &distance);
+                range_pkt.sensor_id = distance.id;
+                range_pkt.range = distance.current_distance;
+                rangefinder_packet_update = true;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_EFI_STATUS:
+            {
+                mavlink_efi_status_t engine;
+                mavlink_msg_efi_status_decode(&msg, &engine);
+                efi_pkt.atmospheric_pressure_kpa = engine.barometric_pressure;
+                // efi_pkt.coolant_temperature;
+                // efi_pkt.cylinder_status;
+                efi_pkt.ecu_index = engine.ecu_index;
+                efi_pkt.engine_load_percent = engine.engine_load;
+                efi_pkt.engine_speed_rpm = engine.rpm;
+                efi_pkt.estimated_consumed_fuel_volume_cm3 = engine.fuel_consumed;
+                efi_pkt.flags = engine.health;
+                efi_pkt.fuel_consumption_rate_cm3pm = engine.fuel_flow;
+                efi_pkt.fuel_pressure = engine.fuel_pressure;
+                efi_pkt.intake_manifold_pressure_kpa = engine.intake_manifold_pressure;
+                efi_pkt.intake_manifold_temperature = engine.intake_manifold_temperature;
+                // efi_pkt.oil_pressure;
+                // efi_pkt.oil_temperature;
+                efi_pkt.spark_dwell_time_ms = engine.spark_dwell_time;
+                // efi_pkt.spark_plug_usage;
+                // efi_pkt.state;
+                efi_pkt.throttle_position_percent = engine.throttle_position;
+                efi_packet_update = true;
                 break;
             }
 
