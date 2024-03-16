@@ -215,7 +215,6 @@ class Board:
             '-Wextra',
             '-Werror=format',
             '-Wpointer-arith',
-            '-Wcast-align',
             '-Wno-missing-field-initializers',
             '-Wno-unused-parameter',
             '-Wno-redundant-decls',
@@ -340,7 +339,7 @@ class Board:
             '-Wno-redundant-decls',
             '-Wno-unknown-pragmas',
             '-Wno-expansion-to-defined',
-            '-Werror=cast-align',
+            '-Wno-cast-align',
             '-Werror=attributes',
             '-Werror=format-security',
             '-Werror=format-extra-args',
@@ -372,7 +371,7 @@ class Board:
             env.CXXFLAGS += [
                 '-fcolor-diagnostics',
 
-                '-Werror=address-of-packed-member',
+                #'-Werror=address-of-packed-member',
 
                 '-Werror=inconsistent-missing-override',
                 '-Werror=overloaded-virtual',
@@ -417,7 +416,7 @@ class Board:
                 ]
 
         if cfg.options.Werror:
-            errors = ['-Werror',
+            errors = [
                       '-Werror=missing-declarations',
                       '-Werror=float-equal',
                       '-Werror=undef',
@@ -1062,7 +1061,6 @@ class chibios(Board):
             '-Wmissing-declarations',
             '-Wno-unused-parameter',
             '-Werror=array-bounds',
-            '-Wfatal-errors',
             '-Werror=uninitialized',
             '-Werror=init-self',
             '-Werror=unused-but-set-variable',

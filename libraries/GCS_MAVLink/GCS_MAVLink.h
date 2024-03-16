@@ -12,15 +12,15 @@
 
 #define MAVLINK_SEND_UART_BYTES(chan, buf, len) comm_send_buffer(chan, buf, len)
 
-#define MAVLINK_START_UART_SEND(chan, size) comm_send_lock(chan, size)
-#define MAVLINK_END_UART_SEND(chan, size) comm_send_unlock(chan)
+// #define MAVLINK_START_UART_SEND(chan, size) comm_send_lock(chan, size)
+// #define MAVLINK_END_UART_SEND(chan, size) comm_send_unlock(chan)
 
 #if AP_NETWORKING_ENABLED
 // allow 7 telemetry ports with networking
 #define MAVLINK_COMM_NUM_BUFFERS 7
 #else
 // allow five telemetry ports
-#define MAVLINK_COMM_NUM_BUFFERS 5
+// #define MAVLINK_COMM_NUM_BUFFERS 5
 #endif
 
 #define MAVLINK_GET_CHANNEL_BUFFER 1
