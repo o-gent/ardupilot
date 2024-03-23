@@ -2,21 +2,31 @@
 #include "AP_Periph.h"
 #include <dronecan_msgs.h>
 
-
-
+/*
+MESSAGE SET DOCS
+Dronecan https://dronecan.github.io/Specification/7._List_of_standard_data_types
+Mavlink https://mavlink.io/en/messages/common.html
+*/
 
 extern const AP_HAL::HAL &hal;
 
 uavcan_equipment_power_BatteryInfo batt_pkt{};
 bool battery_packet_update = false;
+
 uavcan_equipment_range_sensor_Measurement range_pkt{};
 bool rangefinder_packet_update = false;
+
 uavcan_equipment_device_Temperature temp_pkt{};
 bool temperature_packet_update = false;
+
 uavcan_equipment_ice_reciprocating_Status efi_pkt{};
 bool efi_packet_update = false;
-uavcan_equipment_air_data_RawAirData arspd_pkt {};
+
+uavcan_equipment_air_data_RawAirData arspd_pkt{};
 bool airspeed_packet_update = false;
+
+uavcan_equipment_air_data_StaticPressure baro_pkt{};
+bool barometer_packet_update = false;
 
 AP_HAL::UARTDriver *uart;
 
@@ -46,7 +56,6 @@ void serial2can_update()
             {
             case MAVLINK_MSG_ID_HEARTBEAT:
             {
-
             }
 
             case MAVLINK_MSG_ID_AIRSPEED:
@@ -80,7 +89,7 @@ void serial2can_update()
                 batt_pkt.full_charge_capacity_wh = -1;
                 batt_pkt.hours_to_full_charge = -1;
                 batt_pkt.model_instance_id = 0;
-                //batt_pkt.model_name;
+                // batt_pkt.model_name;
                 batt_pkt.remaining_capacity_wh = -1;
                 batt_pkt.state_of_charge_pct = battery.battery_remaining;
                 batt_pkt.state_of_charge_pct_stdev = -1;
@@ -125,6 +134,15 @@ void serial2can_update()
                 // efi_pkt.state;
                 efi_pkt.throttle_position_percent = engine.throttle_position;
                 efi_packet_update = true;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_SCALED_PRESSURE:
+            {
+                mavlink_scaled_pressure_t barometer;
+                mavlink_msg_scaled_pressure_decode(&msg, &barometer);
+                baro_pkt.static_pressure = barometer.press_abs;
+                baro_pkt.static_pressure_variance = 0;
                 break;
             }
 
@@ -202,9 +220,22 @@ void AP_Periph_FW::serial_to_can_update()
 
         canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_SIGNATURE,
                          UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
+                         CANARD_TRANSFER_PRIORITY_HIGH,
                          &buffer[0],
                          total_size);
         airspeed_packet_update = false;
+    }
+
+    if (barometer_packet_update)
+    {
+        uint8_t buffer[UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_MAX_SIZE]{};
+        uint16_t total_size = uavcan_equipment_air_data_StaticPressure_encode(&baro_pkt, buffer, !periph.canfdout());
+
+        canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_SIGNATURE,
+                         UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_ID,
+                         CANARD_TRANSFER_PRIORITY_HIGH,
+                         &buffer[0],
+                         total_size);
+        barometer_packet_update = false;
     }
 }
