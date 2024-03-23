@@ -25,8 +25,8 @@ Start the serial driver
 */
 void serial2can_init()
 {
-    uart = hal.serial(1);
-    uart->begin(115200);
+    uart = hal.serial(2);
+    uart->begin(57600);
 }
 
 /*
