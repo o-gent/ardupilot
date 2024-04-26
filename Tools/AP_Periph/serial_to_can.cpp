@@ -11,22 +11,11 @@ Mavlink https://mavlink.io/en/messages/common.html
 extern const AP_HAL::HAL &hal;
 
 uavcan_equipment_power_BatteryInfo batt_pkt{};
-bool battery_packet_update = false;
-
 uavcan_equipment_range_sensor_Measurement range_pkt{};
-bool rangefinder_packet_update = false;
-
 uavcan_equipment_device_Temperature temp_pkt{};
-bool temperature_packet_update = false;
-
 uavcan_equipment_ice_reciprocating_Status efi_pkt{};
-bool efi_packet_update = false;
-
 uavcan_equipment_air_data_RawAirData arspd_pkt{};
-bool airspeed_packet_update = false;
-
 uavcan_equipment_air_data_StaticPressure baro_pkt{};
-bool barometer_packet_update = false;
 
 AP_HAL::UARTDriver *uart;
 
@@ -40,9 +29,9 @@ void serial2can_init()
 }
 
 /*
-Update CAN packets from the serial packets
+Send out the CAN packets
 */
-void serial2can_update()
+void AP_Periph_FW::serial_to_can_update()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -56,16 +45,25 @@ void serial2can_update()
             {
             case MAVLINK_MSG_ID_HEARTBEAT:
             {
+
             }
 
             case MAVLINK_MSG_ID_AIRSPEED:
             {
-                mavlink_airspeed_t airspeed;
-                mavlink_msg_airspeed_decode(&msg, &airspeed);
-                arspd_pkt.flags = airspeed.flags;
-                arspd_pkt.differential_pressure = airspeed.raw_press;
-                arspd_pkt.differential_pressure_sensor_temperature = airspeed.temperature;
-                airspeed_packet_update = true;
+                mavlink_airspeed_t airspeed_mav;
+                mavlink_msg_airspeed_decode(&msg, &airspeed_mav);
+                arspd_pkt.flags = airspeed_mav.flags;
+                arspd_pkt.differential_pressure = airspeed_mav.raw_press;
+                arspd_pkt.differential_pressure_sensor_temperature = airspeed_mav.temperature;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_MAX_SIZE]{};
+                uint16_t total_size = uavcan_equipment_air_data_RawAirData_encode(&arspd_pkt, buffer, !periph.canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_ID,
+                                 CANARD_TRANSFER_PRIORITY_HIGH,
+                                 &buffer[0],
+                                 total_size);
                 break;
             }
 
@@ -75,7 +73,15 @@ void serial2can_update()
                 mavlink_msg_hygrometer_sensor_decode(&msg, &hygrometer);
                 temp_pkt.temperature = hygrometer.temperature;
                 temp_pkt.device_id = hygrometer.id;
-                temperature_packet_update = true;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_MAX_SIZE]{};
+                const uint16_t total_size = uavcan_equipment_device_Temperature_encode(&temp_pkt, buffer, !canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_ID,
+                                 CANARD_TRANSFER_PRIORITY_LOW,
+                                 &buffer[0],
+                                 total_size);
                 break;
             }
 
@@ -97,7 +103,15 @@ void serial2can_update()
                 // batt_pkt.status_flags
                 batt_pkt.temperature = battery.temperature;
                 batt_pkt.voltage = battery.voltages[0];
-                battery_packet_update = true;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_POWER_BATTERYINFO_MAX_SIZE]{};
+                const uint16_t total_size = uavcan_equipment_power_BatteryInfo_encode(&batt_pkt, buffer, !periph.canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_POWER_BATTERYINFO_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_POWER_BATTERYINFO_ID,
+                                 CANARD_TRANSFER_PRIORITY_LOW,
+                                 &buffer[0],
+                                 total_size);
                 break;
             }
 
@@ -107,7 +121,15 @@ void serial2can_update()
                 mavlink_msg_distance_sensor_decode(&msg, &distance);
                 range_pkt.sensor_id = distance.id;
                 range_pkt.range = distance.current_distance;
-                rangefinder_packet_update = true;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_MAX_SIZE]{};
+                uint16_t total_size = uavcan_equipment_range_sensor_Measurement_encode(&range_pkt, buffer, !periph.canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_ID,
+                                 CANARD_TRANSFER_PRIORITY_LOW,
+                                 &buffer[0],
+                                 total_size);
                 break;
             }
 
@@ -133,7 +155,15 @@ void serial2can_update()
                 // efi_pkt.spark_plug_usage;
                 // efi_pkt.state;
                 efi_pkt.throttle_position_percent = engine.throttle_position;
-                efi_packet_update = true;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_MAX_SIZE]{};
+                const uint16_t total_size = uavcan_equipment_ice_reciprocating_Status_encode(&efi_pkt, buffer, !canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_ID,
+                                 CANARD_TRANSFER_PRIORITY_LOW,
+                                 &buffer[0],
+                                 total_size);
                 break;
             }
 
@@ -143,6 +173,15 @@ void serial2can_update()
                 mavlink_msg_scaled_pressure_decode(&msg, &barometer);
                 baro_pkt.static_pressure = barometer.press_abs;
                 baro_pkt.static_pressure_variance = 0;
+
+                uint8_t buffer[UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_MAX_SIZE]{};
+                uint16_t total_size = uavcan_equipment_air_data_StaticPressure_encode(&baro_pkt, buffer, !periph.canfdout());
+
+                canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_SIGNATURE,
+                                UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_ID,
+                                CANARD_TRANSFER_PRIORITY_HIGH,
+                                &buffer[0],
+                                total_size);
                 break;
             }
 
@@ -152,90 +191,5 @@ void serial2can_update()
             }
             }
         }
-    }
-}
-
-/*
-Send out the CAN packets
-*/
-void AP_Periph_FW::serial_to_can_update()
-{
-
-    if (battery_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_POWER_BATTERYINFO_MAX_SIZE]{};
-        const uint16_t total_size = uavcan_equipment_power_BatteryInfo_encode(&batt_pkt, buffer, !periph.canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_POWER_BATTERYINFO_SIGNATURE,
-                         UAVCAN_EQUIPMENT_POWER_BATTERYINFO_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size);
-        battery_packet_update = false;
-    }
-
-    if (rangefinder_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_MAX_SIZE]{};
-        uint16_t total_size = uavcan_equipment_range_sensor_Measurement_encode(&range_pkt, buffer, !periph.canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_SIGNATURE,
-                         UAVCAN_EQUIPMENT_RANGE_SENSOR_MEASUREMENT_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size);
-        rangefinder_packet_update = false;
-    }
-
-    if (temperature_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_MAX_SIZE]{};
-        const uint16_t total_size = uavcan_equipment_device_Temperature_encode(&temp_pkt, buffer, !canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_SIGNATURE,
-                         UAVCAN_EQUIPMENT_DEVICE_TEMPERATURE_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size);
-        temperature_packet_update = false;
-    }
-
-    if (efi_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_MAX_SIZE]{};
-        const uint16_t total_size = uavcan_equipment_ice_reciprocating_Status_encode(&efi_pkt, buffer, !canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_SIGNATURE,
-                         UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size);
-        efi_packet_update = false;
-    }
-
-    if (airspeed_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_MAX_SIZE]{};
-        uint16_t total_size = uavcan_equipment_air_data_RawAirData_encode(&arspd_pkt, buffer, !periph.canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_SIGNATURE,
-                         UAVCAN_EQUIPMENT_AIR_DATA_RAWAIRDATA_ID,
-                         CANARD_TRANSFER_PRIORITY_HIGH,
-                         &buffer[0],
-                         total_size);
-        airspeed_packet_update = false;
-    }
-
-    if (barometer_packet_update)
-    {
-        uint8_t buffer[UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_MAX_SIZE]{};
-        uint16_t total_size = uavcan_equipment_air_data_StaticPressure_encode(&baro_pkt, buffer, !periph.canfdout());
-
-        canard_broadcast(UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_SIGNATURE,
-                         UAVCAN_EQUIPMENT_AIR_DATA_STATICPRESSURE_ID,
-                         CANARD_TRANSFER_PRIORITY_HIGH,
-                         &buffer[0],
-                         total_size);
-        barometer_packet_update = false;
     }
 }
