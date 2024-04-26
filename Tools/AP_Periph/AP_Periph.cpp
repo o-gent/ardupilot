@@ -42,8 +42,6 @@ AP_Periph_FW periph;
 
 void setup();
 void loop();
-void added_setup();
-void added_update();
 
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
@@ -61,21 +59,6 @@ void loop(void)
 {
     periph.update();
 }
-
-
-
-void added_setup(void) {
-    serial2can_init();
-}
-
-
-void added_update(void){
-    serial2can_update();
-}
-
-
-
-
 
 static uint32_t start_ms;
 
@@ -135,7 +118,7 @@ void AP_Periph_FW::init()
 #endif
 
     stm32_watchdog_pat();
-    
+
 #ifdef HAL_BOARD_AP_PERIPH_ZUBAXGNSS
     // setup remapping register for ZubaxGNSS
     uint32_t mapr = AFIO->MAPR;
@@ -303,7 +286,7 @@ void AP_Periph_FW::init()
     notify.init();
 #endif
 
-    #ifdef HAL_PERIPH_ENABLE_RELAY
+#ifdef HAL_PERIPH_ENABLE_RELAY
     relay.init();
 #endif
 
@@ -311,7 +294,8 @@ void AP_Periph_FW::init()
     scripting.init();
 #endif
 
-    added_setup();
+    serial2can_init();
+
     start_ms = AP_HAL::millis();
 }
 
@@ -528,7 +512,6 @@ void AP_Periph_FW::update()
     logger.periodic_tasks();
 #endif
 
-    added_update();
 
     can_update();
 
