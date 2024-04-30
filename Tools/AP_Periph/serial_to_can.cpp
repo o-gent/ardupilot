@@ -45,7 +45,19 @@ void AP_Periph_FW::serial_to_can_update()
             {
             case MAVLINK_MSG_ID_HEARTBEAT:
             {
+                int type = MAV_TYPE_GPS;
+                uint8_t autopilot_type = MAV_AUTOPILOT_ARDUPILOTMEGA;
+                uint8_t system_mode = MAV_MODE_MANUAL_ARMED; ///< Booting up
+                uint32_t custom_mode = 0;                    ///< Custom mode, can be defined by user/adopter
+                uint8_t system_state = MAV_STATE_ACTIVE;     ///< System ready for flight
+                mavlink_message_t heartbeat_msg;
+                uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
+                mavlink_msg_heartbeat_pack(1, MAV_COMP_ID_ALL, &heartbeat_msg, type, autopilot_type, system_mode, custom_mode, system_state);
+                uint16_t len = mavlink_msg_to_send_buffer(buf, &heartbeat_msg);
+
+                uart->write(buf, len);
+                break;
             }
 
             case MAVLINK_MSG_ID_AIRSPEED:
@@ -96,11 +108,11 @@ void AP_Periph_FW::serial_to_can_update()
                 batt_pkt.hours_to_full_charge = -1;
                 batt_pkt.model_instance_id = 0;
                 // batt_pkt.model_name;
-                batt_pkt.remaining_capacity_wh = -1;
+                batt_pkt.remaining_capacity_wh = battery.current_consumed;
                 batt_pkt.state_of_charge_pct = battery.battery_remaining;
                 batt_pkt.state_of_charge_pct_stdev = -1;
-                batt_pkt.state_of_health_pct = -1;
-                // batt_pkt.status_flags
+                batt_pkt.state_of_health_pct = battery.energy_consumed;
+                batt_pkt.status_flags = battery.battery_function;
                 batt_pkt.temperature = battery.temperature;
                 batt_pkt.voltage = battery.voltages[0];
 
