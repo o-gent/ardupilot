@@ -283,6 +283,14 @@ const AP_Param::GroupInfo AP_TECS::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("HDEM_TCONST", 33, AP_TECS, _hgt_dem_tconst, 3.0f),
 
+
+    AP_GROUPINFO("D_FF", 34, AP_TECS, D_FF, 1.0f),
+    AP_GROUPINFO("D_P", 35, AP_TECS, D_P, 1.0f),
+    AP_GROUPINFO("D_I", 36, AP_TECS, D_I, 1.0f),
+    AP_GROUPINFO("D_I_LIMIT", 37, AP_TECS, D_I_LIMIT, 1.0f),
+    AP_GROUPINFO("D_PTCH", 37, AP_TECS, D_PTCH, -45.0f),
+
+
     AP_GROUPEND
 };
 
@@ -1390,6 +1398,62 @@ void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
     if (_options & OPTION_GLIDER_ONLY) {
         _flags.badDescent = false;
     }
+
+
+    /*
+    pure height to pitch controller for good "landings"
+    */
+
+    d_height_error = _hgt_dem_in_raw - _height;
+    d_height_gradient = _hgt_dem_in_raw - d_hgt_dem_in_raw_last;
+    d_height_gradient_change = d_height_gradient - d_height_gradient_last;
+
+    if(_flags.is_doing_auto_land)
+    {
+        // we should set pitch_dem to a high angle when we start autoland..
+        if(d_run_once)
+        {
+            _pitch_dem = DEG_TO_RAD * D_PTCH;
+            d_run_once = false;
+        }
+
+        // Do a FF term based on height demand gradient
+        // will help on initial pitch over on arbitary dive angles or a changing dive angle, partly covered by D_PTCH
+        _pitch_dem += d_height_gradient_change * D_FF;
+
+        // do a P term
+        _pitch_dem += d_height_error * D_P;
+
+        // do an I term
+        d_height_integral += d_height_error * D_I;
+        d_height_integral = constrain_float(d_height_integral, -D_I_LIMIT, D_I_LIMIT);
+        _pitch_dem += d_height_integral;
+
+        // we prolly don't want to have a demand of less than -90
+        _pitch_dem = constrain_float(_pitch_dem, -M_PI/2, 0);
+
+        AP::logger().WriteStreaming("DIVE", "TimeUS, hgt, hgt_in_raw, pitch_dem, hgt_error, hgt_grad, hgt_grad_delta, d_integral",
+                            "smm-mmm-",
+                            "F0000000",
+                            "Qfffffff",
+                            now,
+                            (double)_height,
+                            (double)_hgt_dem_in_raw,
+                            (double)_pitch_dem,
+                            (double)d_height_error,
+                            (double)d_height_gradient,
+                            (double)d_height_gradient_change,
+                            (double)d_height_integral
+                            );
+    }
+    else {
+        d_run_once = true;
+    }
+
+    // record the values used in the loop for next time
+    d_hgt_dem_in_raw_last = _hgt_dem_in_raw;
+    d_height_gradient_last = d_height_gradient;
+
 
 #if HAL_LOGGING_ENABLED
     if (AP::logger().should_log(_log_bitmask)){

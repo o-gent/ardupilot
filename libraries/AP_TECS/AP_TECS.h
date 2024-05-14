@@ -284,6 +284,21 @@ private:
     float _hgt_dem;             // height demand sent to control loops (m)
     float _hgt_dem_prev;        // _hgt_dem from previous frame (m)
 
+    // dive stuff
+    float d_height_error;
+    float d_height_gradient;
+    float d_height_gradient_change;
+    float d_height_integral;
+    float d_hgt_dem_in_raw_last;
+    float d_height_gradient_last;
+    bool d_run_once = true;
+    // dive params
+    AP_Float D_FF;
+    AP_Float D_P;
+    AP_Float D_I;
+    AP_Float D_I_LIMIT;
+    AP_Float D_PTCH;
+
     // height rate demands
     float _hgt_dem_rate_ltd;    // height demand after application of the rate limiter (m)
     float _hgt_rate_dem;        // height rate demand sent to control loops
