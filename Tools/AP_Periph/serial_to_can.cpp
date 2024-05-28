@@ -13,9 +13,10 @@ extern const AP_HAL::HAL &hal;
 uavcan_equipment_power_BatteryInfo batt_pkt{};
 uavcan_equipment_range_sensor_Measurement range_pkt{};
 uavcan_equipment_device_Temperature temp_pkt{};
-uavcan_equipment_ice_reciprocating_Status efi_pkt{};
+// uavcan_equipment_ice_reciprocating_Status efi_pkt{};
 uavcan_equipment_air_data_RawAirData arspd_pkt{};
 uavcan_equipment_air_data_StaticPressure baro_pkt{};
+uavcan_equipment_ice_FuelTankStatus fuel_pkt{};
 
 AP_HAL::UARTDriver *uart;
 
@@ -145,34 +146,54 @@ void AP_Periph_FW::serial_to_can_update()
                 break;
             }
 
+            // case MAVLINK_MSG_ID_EFI_STATUS:
+            // {
+            //     mavlink_efi_status_t engine;
+            //     mavlink_msg_efi_status_decode(&msg, &engine);
+            //     efi_pkt.atmospheric_pressure_kpa = engine.barometric_pressure;
+            //     // efi_pkt.coolant_temperature;
+            //     // efi_pkt.cylinder_status;
+            //     efi_pkt.ecu_index = engine.ecu_index;
+            //     efi_pkt.engine_load_percent = engine.engine_load;
+            //     efi_pkt.engine_speed_rpm = engine.rpm;
+            //     efi_pkt.estimated_consumed_fuel_volume_cm3 = engine.fuel_consumed;
+            //     efi_pkt.flags = engine.health;
+            //     efi_pkt.fuel_consumption_rate_cm3pm = engine.fuel_flow;
+            //     efi_pkt.fuel_pressure = engine.fuel_pressure;
+            //     efi_pkt.intake_manifold_pressure_kpa = engine.intake_manifold_pressure;
+            //     efi_pkt.intake_manifold_temperature = engine.intake_manifold_temperature;
+            //     // efi_pkt.oil_pressure;
+            //     // efi_pkt.oil_temperature;
+            //     efi_pkt.spark_dwell_time_ms = engine.spark_dwell_time;
+            //     // efi_pkt.spark_plug_usage;
+            //     // efi_pkt.state;
+            //     efi_pkt.throttle_position_percent = engine.throttle_position;
+
+            //     uint8_t buffer[UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_MAX_SIZE]{};
+            //     const uint16_t total_size = uavcan_equipment_ice_reciprocating_Status_encode(&efi_pkt, buffer, !canfdout());
+
+            //     canard_broadcast(UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_SIGNATURE,
+            //                      UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_ID,
+            //                      CANARD_TRANSFER_PRIORITY_LOW,
+            //                      &buffer[0],
+            //                      total_size);
+            //     break;
+            // }
+
             case MAVLINK_MSG_ID_EFI_STATUS:
             {
                 mavlink_efi_status_t engine;
                 mavlink_msg_efi_status_decode(&msg, &engine);
-                efi_pkt.atmospheric_pressure_kpa = engine.barometric_pressure;
-                // efi_pkt.coolant_temperature;
-                // efi_pkt.cylinder_status;
-                efi_pkt.ecu_index = engine.ecu_index;
-                efi_pkt.engine_load_percent = engine.engine_load;
-                efi_pkt.engine_speed_rpm = engine.rpm;
-                efi_pkt.estimated_consumed_fuel_volume_cm3 = engine.fuel_consumed;
-                efi_pkt.flags = engine.health;
-                efi_pkt.fuel_consumption_rate_cm3pm = engine.fuel_flow;
-                efi_pkt.fuel_pressure = engine.fuel_pressure;
-                efi_pkt.intake_manifold_pressure_kpa = engine.intake_manifold_pressure;
-                efi_pkt.intake_manifold_temperature = engine.intake_manifold_temperature;
-                // efi_pkt.oil_pressure;
-                // efi_pkt.oil_temperature;
-                efi_pkt.spark_dwell_time_ms = engine.spark_dwell_time;
-                // efi_pkt.spark_plug_usage;
-                // efi_pkt.state;
-                efi_pkt.throttle_position_percent = engine.throttle_position;
+                fuel_pkt.fuel_consumption_rate_cm3pm = engine.fuel_flow;
+                fuel_pkt.fuel_tank_id = engine.ecu_index;
+                fuel_pkt.available_fuel_volume_percent = engine.engine_load;
+                fuel_pkt.available_fuel_volume_cm3 = engine.fuel_consumed;
+                fuel_pkt.fuel_temperature = engine.intake_manifold_temperature;
 
-                uint8_t buffer[UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_MAX_SIZE]{};
-                const uint16_t total_size = uavcan_equipment_ice_reciprocating_Status_encode(&efi_pkt, buffer, !canfdout());
-
-                canard_broadcast(UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_SIGNATURE,
-                                 UAVCAN_EQUIPMENT_ICE_RECIPROCATING_STATUS_ID,
+                uint8_t buffer[UAVCAN_EQUIPMENT_ICE_FUELTANKSTATUS_MAX_SIZE]{};
+                const uint16_t total_size = uavcan_equipment_ice_FuelTankStatus_encode(&fuel_pkt, buffer, !canfdout());
+                canard_broadcast(UAVCAN_EQUIPMENT_ICE_FUELTANKSTATUS_SIGNATURE,
+                                 UAVCAN_EQUIPMENT_ICE_FUELTANKSTATUS_ID,
                                  CANARD_TRANSFER_PRIORITY_LOW,
                                  &buffer[0],
                                  total_size);
