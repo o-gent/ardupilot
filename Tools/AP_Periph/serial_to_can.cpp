@@ -25,7 +25,7 @@ Start the serial driver
 */
 void serial2can_init()
 {
-    uart = hal.serial(2);
+    uart = hal.serial(0);
     uart->begin(57600);
 }
 
@@ -100,22 +100,22 @@ void AP_Periph_FW::serial_to_can_update()
 
             case MAVLINK_MSG_ID_BATTERY_STATUS:
             {
-                mavlink_battery_status_t battery;
-                mavlink_msg_battery_status_decode(&msg, &battery);
+                mavlink_battery_status_t mav_battery;
+                mavlink_msg_battery_status_decode(&msg, &mav_battery);
                 batt_pkt.average_power_10sec = 0;
-                batt_pkt.battery_id = battery.id;
-                batt_pkt.current = battery.current_battery;
+                batt_pkt.battery_id = mav_battery.id;
+                batt_pkt.current = mav_battery.current_battery;
                 batt_pkt.full_charge_capacity_wh = -1;
                 batt_pkt.hours_to_full_charge = -1;
                 batt_pkt.model_instance_id = 0;
                 // batt_pkt.model_name;
-                batt_pkt.remaining_capacity_wh = battery.current_consumed;
-                batt_pkt.state_of_charge_pct = battery.battery_remaining;
+                batt_pkt.remaining_capacity_wh = mav_battery.current_consumed;
+                batt_pkt.state_of_charge_pct = mav_battery.battery_remaining;
                 batt_pkt.state_of_charge_pct_stdev = -1;
-                batt_pkt.state_of_health_pct = battery.energy_consumed;
-                batt_pkt.status_flags = battery.battery_function;
-                batt_pkt.temperature = battery.temperature;
-                batt_pkt.voltage = battery.voltages[0];
+                batt_pkt.state_of_health_pct = mav_battery.energy_consumed;
+                batt_pkt.status_flags = mav_battery.battery_function;
+                batt_pkt.temperature = mav_battery.temperature;
+                batt_pkt.voltage = mav_battery.voltages[0];
 
                 uint8_t buffer[UAVCAN_EQUIPMENT_POWER_BATTERYINFO_MAX_SIZE]{};
                 const uint16_t total_size = uavcan_equipment_power_BatteryInfo_encode(&batt_pkt, buffer, !periph.canfdout());
